@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class UserFavorite extends Model
+{
+    protected $table = 'user_favorites';
+    
+    protected $fillable = ['user_id', 'restaurant_id'];
+
+    public $incrementing = false;
+    protected $primaryKey = ['user_id', 'restaurant_id'];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function restaurant()
+    {
+        return $this->belongsTo(Restaurant::class);
+    }
+}

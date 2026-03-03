@@ -1,0 +1,33 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Booking extends Model
+{
+    protected $fillable = [
+        'user_id', 'table_id', 'booking_date', 
+        'booking_time', 'guests_count', 'status'
+    ];
+
+    protected $casts = [
+        'booking_date' => 'date',
+        'booking_time' => 'datetime:H:i',
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function table()
+    {
+        return $this->belongsTo(Table::class);
+    }
+
+    public function review()
+    {
+        return $this->hasOne(Review::class);
+    }
+}
