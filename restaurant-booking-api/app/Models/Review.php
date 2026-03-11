@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Review extends Model
 {
+    
+    use HasFactory;
+    public $timestamps = false;
     protected $fillable = ['user_id', 'restaurant_id', 'booking_id', 'rating', 'comment'];
 
     public function user()

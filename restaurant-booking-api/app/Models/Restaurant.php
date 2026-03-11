@@ -2,18 +2,22 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Restaurant extends Model
 {
+    use HasFactory;
+
+    public $timestamps = false;
     protected $fillable = [
         'name', 'city_id', 'address', 'phone', 
         'description', 'capacity', 'opening_time', 'closing_time'
     ];
 
     protected $casts = [
-        'opening_time' => 'datetime:H:i',
-        'closing_time' => 'datetime:H:i',
+        'opening_time' => 'string',
+        'closing_time' => 'string',
     ];
 
     public function city()
