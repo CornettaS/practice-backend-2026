@@ -1,14 +1,114 @@
-Основные эндпоинты:
-POST /api/register Регистрация
-POST /api/login Вход
-POST /api/logout Выход
-GET /api/restaurants Список ресторанов
-POST /api/restaurants Создание ресторана (admin)
-GET /api/restaurants/{id} Детали ресторана
-GET /api/restaurants/{id}/available-tables Свободные столики
-GET /api/bookings Список броней
-POST /api/bookings Создание брони
-GET /api/my-bookings Мои брони
-PATCH /api/bookings/{id}/cancel Отмена брони
-POST /api/reviews Создание отзыва
-GET /api/favorites Избранное
+# Restaurant Booking API
+
+API для бронирования столиков в ресторанах. Пользователи могут искать рестораны, бронировать столики, оставлять отзывы и добавлять рестораны в избранное.
+
+## Стек технологий
+
+- **PHP** 8.2
+- **Laravel** 11
+- **MySQL** 8.0
+- **Laravel Sanctum** (аутентификация по токенам)
+- **Docker**
+
+## Возможности
+
+### Для пользователей:
+
+- Просмотр ресторанов с фильтрацией по городу и вместимости
+- Поиск свободных столиков на конкретную дату и время
+- Создание, просмотр и отмена бронирований
+- Предстоящие брони и история посещений
+- Отзывы только после посещения ресторана
+- Добавление ресторанов в избранное
+
+### Для администраторов:
+
+- Полное управление ресторанами (CRUD)
+- Управление столиками в ресторанах
+- Просмотр всех бронирований
+- Отмена любых броней
+- Статистика по броням и столикам
+
+### API Endpoints:
+
+#### Аутентификация (Публичные)
+
+- **POST** `/api/register` - Регистрация нового пользователя
+- **POST** `/api/login` - Вход в систему
+
+#### Рестораны (Публичные)
+
+- **GET** `/api/restaurants` - Список всех ресторанов с фильтрацией
+- **GET** `/api/restaurants/{id}` - Детальная информация о ресторане
+- **GET** `/api/restaurants/{id}/reviews` - Все отзывы о ресторане
+- **GET** `/api/restaurants/{id}/available-tables` - Доступные столики на конкретную дату и время
+- **GET** `/api/restaurants/{id}/schedule` - Расписание работы ресторана
+- **GET** `/api/popular-restaurants` - Популярные рестораны (по избранным)
+
+#### Пользователь (Требуется аутентификация)
+
+- **POST** `/api/logout` - Выход из системы
+- **GET** `/api/user` - Информация о текущем пользователе
+
+#### Бронирования (Требуется аутентификация)
+
+- **GET** `/api/bookings` - Все бронирования пользователя
+- **POST** `/api/bookings` - Создать новое бронирование
+- **GET** `/api/bookings/upcoming` - Предстоящие бронирования
+- **GET** `/api/bookings/history` - История посещений
+- **GET** `/api/bookings/{id}` - Детали конкретного бронирования
+- **PATCH** `/api/bookings/{id}/cancel` - Отменить бронирование
+
+#### Отзывы (Требуется аутентификация)
+
+- **POST** `/api/reviews` - Оставить отзыв (только после посещения)
+- **PUT** `/api/reviews/{id}` - Редактировать свой отзыв
+- **DELETE** `/api/reviews/{id}` - Удалить свой отзыв
+- **GET** `/api/my-reviews` - Все отзывы пользователя
+
+#### Избранное (Требуется аутентификация)
+
+- **GET** `/api/favorites` - Список избранных ресторанов
+- **POST** `/api/favorites/{restaurantId}` - Добавить ресторан в избранное
+- **DELETE** `/api/favorites/{restaurantId}` - Удалить из избранного
+- **GET** `/api/favorites/check/{restaurantId}` - Проверить, в избранном ли ресторан
+
+#### Администрирование (Требуется роль admin)
+
+##### Управление ресторанами
+
+- **POST** `/api/admin/restaurants` - Создать новый ресторан
+- **PUT** `/api/admin/restaurants/{id}` - Обновить информацию о ресторане
+- **DELETE** `/api/admin/restaurants/{id}` - Удалить ресторан
+
+##### Управление столиками
+
+- **POST** `/api/admin/restaurants/{restaurantId}/tables` - Создать столик в ресторане
+- **PUT** `/api/admin/tables/{tableId}` - Обновить информацию о столике
+- **DELETE** `/api/admin/tables/{tableId}` - Удалить столик
+
+##### Управление бронированиями
+
+- **GET** `/api/admin/bookings` - Все бронирования в системе
+- **PATCH** `/api/admin/bookings/{id}/cancel` - Отменить любое бронирование
+
+##### Статистика
+
+- **GET** `/api/admin/statistics/tables` - Статистика по всем столикам
+- **GET** `/api/admin/statistics/tables/{restaurantId}` - Статистика по столикам конкретного ресторана
+- **GET** `/api/admin/statistics/bookings` - Статистика по бронированиям
+
+### Примеры запросов
+
+#### Поиск доступных столиков
+
+GET /api/restaurants/1/available-tables?date=2024-01-20&time=19:00&guests=4
+
+## Установка
+
+### 1. Клонирование репозитория
+
+```bash
+git clone <repository-url>
+cd restaurant-booking
+```
