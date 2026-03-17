@@ -1,32 +1,17 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Services\RestaurantService;
-use App\Services\BookingService;
-use App\Models\Table;
-use App\Models\Booking;
+use App\Services\AdminService;
 use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
-    protected $restaurantService;
-    protected $bookingService;
+    protected $adminService;
 
-    public function __construct(RestaurantService $restaurantService, BookingService $bookingService)
+    public function __construct(AdminService $adminService)
     {
-        $this->restaurantService = $restaurantService;
-        $this->bookingService = $bookingService;
-        
-        $this->middleware(function ($request, $next) {
-            if ($request->user()->role !== 'admin') {
-                return response()->json([
-                    'message' => 'Доступ запрещен. Требуются права администратора.'
-                ], 403);
-            }
-            return $next($request);
-        });
+        $this->adminService = $adminService;
     }
 
     public function store(Request $request)
@@ -35,88 +20,109 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'city_id' => 'required|exists:cities,id',
             'address' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'description' => 'nullable|string',
+            'capacity' => 'required|integer|min:1',
             'opening_time' => 'required|date_format:H:i',
             'closing_time' => 'required|date_format:H:i|after:opening_time',
         ]);
 
-        $restaurant = $this->restaurantService->createRestaurant($data);
-
+        $restaurant = $this->adminService->createRestaurant($data);
+        
         return response()->json([
-            'message' => 'Ресторан успешно создан',
-            'restaurant' => $restaurant
+            'success' => true,
+            'message' => 'Ресторан создан',
+            'data' => $restaurant
         ], 201);
     }
 
     public function update(Request $request, $id)
     {
         $data = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'city_id' => 'sometimes|exists:cities,id',
-            'address' => 'sometimes|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'description' => 'nullable|string',
-            'opening_time' => 'sometimes|date_format:H:i',
-            'closing_time' => 'sometimes|date_format:H:i|after:opening_time',
+            'name' => 'sometimes|string',
+            'capacity' => 'sometimes|integer|min:1',
         ]);
 
-        $restaurant = $this->restaurantService->updateRestaurant($id, $data);
-
+        $restaurant = $this->adminService->updateRestaurant($id, $data);
+        
         return response()->json([
-            'message' => 'Ресторан успешно обновлен',
-            'restaurant' => $restaurant
+            'success' => true,
+            'message' => 'Ресторан обновлен',
+            'data' => $restaurant
         ]);
     }
 
     public function destroy($id)
     {
-        $this->restaurantService->deleteRestaurant($id);
-
+        $this->adminService->deleteRestaurant($id);
+        
         return response()->json([
-            'message' => 'Ресторан успешно удален'
+            'success' => true,
+            'message' => 'Ресторан удален'
         ]);
     }
 
     public function createTable(Request $request, $restaurantId)
     {
-        $request->validate([
+        $data = $request->validate([
             'table_number' => 'required|string|max:10',
             'capacity' => 'required|integer|min:1',
         ]);
 
-        $table = Table::create([
-            'restaurant_id' => $restaurantId,
-            'table_number' => $request->table_number,
-            'capacity' => $request->capacity,
-            'is_available' => true
-        ]);
-
+        $table = $this->adminService->createTable($restaurantId, $data);
+        
         return response()->json([
-            'message' => 'Столик успешно создан',
-            'table' => $table
+            'success' => true,
+            'message' => 'Столик создан',
+            'data' => $table
         ], 201);
     }
 
-    public function bookings()
+    public function updateTable(Request $request, $tableId)
     {
-        $bookings = Booking::with(['user', 'table.restaurant'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
+        $data = $request->validate([
+            'table_number' => 'sometimes|string',
+            'capacity' => 'sometimes|integer|min:1',
+        ]);
 
-        return response()->json($bookings);
+        $table = $this->adminService->updateTable($tableId, $data);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Столик обновлен',
+            'data' => $table
+        ]);
+    }
+
+    public function destroyTable($tableId)
+    {
+        $this->adminService->deleteTable($tableId);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Столик удален'
+        ]);
+    }
+
+    public function bookings(Request $request)
+    {
+        $bookings = $this->adminService->getAllBookings($request->all());
+        
+        return response()->json([
+            'success' => true,
+            'data' => $bookings
+        ]);
     }
 
     public function cancelBooking($id)
     {
-        $result = $this->bookingService->cancelBooking($id, null, true);
-
-        if (!$result['success']) {
-            return response()->json([
-                'message' => $result['message']
-            ], 400);
-        }
-
-        return response()->json($result);
+        $booking = $this->adminService->cancelBooking($id);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Бронь отменена',
+            'data' => [
+                'booking_id' => $booking->id,
+                'status' => $booking->status
+            ]
+        ]);
     }
 }

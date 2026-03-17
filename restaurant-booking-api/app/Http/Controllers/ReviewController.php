@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\ReviewService;
 use Illuminate\Http\Request;
+use App\Models\Review;
 
 class ReviewController extends Controller
 {
@@ -12,6 +13,14 @@ class ReviewController extends Controller
     public function __construct(ReviewService $reviewService)
     {
         $this->reviewService = $reviewService;
+    }
+    
+ 
+    private function checkReviewAccess($review, $user)
+    {
+        if ($review->user_id !== $user->id && $user->role !== 'admin') {
+            abort(403, 'Доступ запрещен');
+        }
     }
 
     public function store(Request $request)
@@ -26,15 +35,18 @@ class ReviewController extends Controller
 
         if (!$result['success']) {
             return response()->json([
+                'success' => false,
                 'message' => $result['message']
             ], $result['code']);
         }
 
         return response()->json([
+            'success' => true,
             'message' => 'Спасибо за ваш отзыв!',
-            'review' => $result['review']
+            'data' => $result['review']
         ], 201);
     }
+
 
     public function update(Request $request, $id)
     {
@@ -43,63 +55,78 @@ class ReviewController extends Controller
             'comment' => 'nullable|string|max:1000'
         ]);
 
+        $review = Review::findOrFail($id);
+        $this->checkReviewAccess($review, $request->user());
+
         $result = $this->reviewService->updateReview($id, $request->user()->id, $data);
 
         if (!$result['success']) {
             return response()->json([
+                'success' => false,
                 'message' => $result['message']
             ], $result['code']);
         }
 
         return response()->json([
+            'success' => true,
             'message' => 'Отзыв успешно обновлен',
-            'review' => $result['review']
+            'data' => $result['review']
         ]);
     }
 
+
     public function destroy(Request $request, $id)
     {
-        $result = $this->reviewService->deleteReview(
-            $id,
-            $request->user()->id,
-            $request->user()->role === 'admin'
-        );
+        $review = Review::findOrFail($id);
+        $this->checkReviewAccess($review, $request->user());
+
+        $result = $this->reviewService->deleteReview($id, $request->user()->id);
 
         if (!$result['success']) {
             return response()->json([
+                'success' => false,
                 'message' => $result['message']
             ], $result['code']);
         }
 
         return response()->json([
+            'success' => true,
             'message' => $result['message']
         ]);
     }
 
+
     public function myReviews(Request $request)
     {
-        $reviews = \App\Models\Review::with(['restaurant', 'booking'])
+        $reviews = Review::with(['restaurant', 'booking'])
             ->where('user_id', $request->user()->id)
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        return response()->json($reviews);
+        return response()->json([
+            'success' => true,
+            'data' => $reviews
+        ]);
     }
 
     public function restaurantReviews($restaurantId)
     {
-        $reviews = \App\Models\Review::with('user')
+        $reviews = Review::with('user')
             ->where('restaurant_id', $restaurantId)
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        $averageRating = \App\Models\Review::where('restaurant_id', $restaurantId)->avg('rating');
+        $averageRating = Review::where('restaurant_id', $restaurantId)->avg('rating');
+        $totalReviews = Review::where('restaurant_id', $restaurantId)->count();
 
         return response()->json([
-            'restaurant_id' => $restaurantId,
-            'average_rating' => round($averageRating, 1) ?? 0,
-            'total_reviews' => $reviews->total(),
-            'reviews' => $reviews
+            'success' => true,
+            'data' => [
+                'restaurant_id' => $restaurantId,
+                'average_rating' => round($averageRating, 1) ?? 0,
+                'total_reviews' => $totalReviews,
+                'reviews' => $reviews
+            ]
         ]);
     }
 }

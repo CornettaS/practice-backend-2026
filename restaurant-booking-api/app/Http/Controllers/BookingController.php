@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Services\BookingService;
 use Illuminate\Http\Request;
-
+use App\Models\Booking;
+use App\Models\Table;
 class BookingController extends Controller
 {
     protected $bookingService;
@@ -12,6 +13,14 @@ class BookingController extends Controller
     public function __construct(BookingService $bookingService)
     {
         $this->bookingService = $bookingService;
+    }
+    
+ 
+    private function checkBookingAccess($booking, $user)
+    {
+        if ($booking->user_id !== $user->id && $user->role !== 'admin') {
+            abort(403, 'Доступ запрещен');
+        }
     }
 
     public function index(Request $request)
@@ -23,11 +32,14 @@ class BookingController extends Controller
             'data' => $bookings->map(fn($b) => [
                 'id' => $b->id,
                 'restaurant' => $b->table->restaurant->name,
+                'restaurant_id' => $b->table->restaurant->id,
                 'address' => $b->table->restaurant->address,
                 'date' => $b->booking_date,
                 'time' => substr($b->booking_time, 0, 5),
+                'end_time' => date('H:i', strtotime($b->booking_time) + (2 * 3600)),
                 'guests' => $b->guests_count,
                 'table_number' => $b->table->table_number,
+                'table_id' => $b->table->id,
                 'status' => $b->status
             ])
         ]);
@@ -63,13 +75,16 @@ class BookingController extends Controller
             'success' => true,
             'message' => 'Бронирование успешно создано',
             'data' => [
-                'booking_id' => $booking->id,
+                'id' => $booking->id,
                 'restaurant' => $booking->table->restaurant->name,
+                'restaurant_id' => $booking->table->restaurant->id,
                 'address' => $booking->table->restaurant->address,
                 'date' => $booking->booking_date,
                 'time' => substr($booking->booking_time, 0, 5),
+                'end_time' => date('H:i', strtotime($booking->booking_time) + (2 * 3600)),
                 'guests' => $booking->guests_count,
                 'table_number' => $booking->table->table_number,
+                'table_id' => $booking->table->id,
                 'status' => $booking->status
             ]
         ], 201);
@@ -77,29 +92,33 @@ class BookingController extends Controller
 
     public function show(Request $request, $id)
     {
-        $booking = \App\Models\Booking::with(['table.restaurant', 'user'])->findOrFail($id);
-
-        if ($booking->user_id !== $request->user()->id && $request->user()->role !== 'admin') {
-            return response()->json(['success' => false, 'message' => 'Доступ запрещен'], 403);
-        }
+        $booking = Booking::with(['table.restaurant', 'user'])->findOrFail($id);
+        
+        $this->checkBookingAccess($booking, $request->user());
 
         return response()->json([
             'success' => true,
             'data' => [
                 'id' => $booking->id,
                 'restaurant' => [
+                    'id' => $booking->table->restaurant->id,
                     'name' => $booking->table->restaurant->name,
                     'address' => $booking->table->restaurant->address,
+                    'phone' => $booking->table->restaurant->phone,
                 ],
                 'table' => [
+                    'id' => $booking->table->id,
                     'number' => $booking->table->table_number,
                     'capacity' => $booking->table->capacity
                 ],
                 'date' => $booking->booking_date,
                 'time' => substr($booking->booking_time, 0, 5),
+                'end_time' => date('H:i', strtotime($booking->booking_time) + (2 * 3600)),
                 'guests' => $booking->guests_count,
                 'status' => $booking->status,
+                'created_at' => $booking->created_at,
                 'user' => [
+                    'id' => $booking->user->id,
                     'name' => $booking->user->name,
                     'email' => $booking->user->email,
                     'phone' => $booking->user->phone
@@ -109,19 +128,29 @@ class BookingController extends Controller
     }
 
     public function cancel(Request $request, $id)
-    {
-        $result = $this->bookingService->cancelBooking(
-            $id,
-            $request->user()->id,
-            $request->user()->role === 'admin'
-        );
+        {
+            $booking = Booking::findOrFail($id);
+            
+            $this->checkBookingAccess($booking, $request->user());
+            
+            if ($request->user()->role === 'admin') {
+                $result = $this->bookingService->cancelAnyBooking($id);
+            } else {
+                $result = $this->bookingService->cancelOwnBooking($id, $request->user()->id);
+            }
 
-        if (!$result['success']) {
-            return response()->json($result, $result['code'] ?? 400);
+            if (!$result['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message']
+                ], 400);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Бронь отменена'
+            ]);
         }
-
-        return response()->json($result);
-    }
 
     public function upcoming(Request $request)
     {
@@ -132,11 +161,14 @@ class BookingController extends Controller
             'data' => $bookings->map(fn($b) => [
                 'id' => $b->id,
                 'restaurant' => $b->table->restaurant->name,
+                'restaurant_id' => $b->table->restaurant->id,
                 'address' => $b->table->restaurant->address,
                 'date' => $b->booking_date,
                 'time' => substr($b->booking_time, 0, 5),
+                'end_time' => date('H:i', strtotime($b->booking_time) + (2 * 3600)),
                 'guests' => $b->guests_count,
                 'table_number' => $b->table->table_number,
+                'table_id' => $b->table->id,
                 'status' => $b->status
             ])
         ]);
@@ -151,12 +183,20 @@ class BookingController extends Controller
             'data' => $bookings->map(fn($b) => [
                 'id' => $b->id,
                 'restaurant' => $b->table->restaurant->name,
+                'restaurant_id' => $b->table->restaurant->id,
                 'address' => $b->table->restaurant->address,
                 'date' => $b->booking_date,
                 'time' => substr($b->booking_time, 0, 5),
+                'end_time' => date('H:i', strtotime($b->booking_time) + (2 * 3600)),
                 'guests' => $b->guests_count,
-                'status' => $b->status === 'cancelled' ? 'Отменено' : 'Посещено'
+                'table_number' => $b->table->table_number,
+                'table_id' => $b->table->id,
+                'status' => $b->status,
+                'status_text' => $b->status === 'cancelled' ? 'Отменено' : 
+                                ($b->status === 'completed' ? 'Посещено' : 'Активно')
             ])
         ]);
     }
+
+ 
 }

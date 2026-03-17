@@ -7,7 +7,6 @@ use App\Models\Booking;
 
 class ReviewService
 {
-
     public function createReview($userId, $data)
     {
         $booking = Booking::with('table')->findOrFail($data['booking_id']);
@@ -50,7 +49,6 @@ class ReviewService
         ];
     }
 
-
     public function updateReview($reviewId, $userId, $data)
     {
         $review = Review::findOrFail($reviewId);
@@ -71,12 +69,11 @@ class ReviewService
         ];
     }
 
-
-    public function deleteReview($reviewId, $userId, $isAdmin = false)
+    public function deleteReview($reviewId, $userId)
     {
         $review = Review::findOrFail($reviewId);
 
-        if (!$isAdmin && $review->user_id !== $userId) {
+        if ($review->user_id !== $userId) {
             return [
                 'success' => false,
                 'message' => 'Доступ запрещен',

@@ -8,14 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 class UserFavorite extends Model
 {
     use HasFactory;
+    
     public $timestamps = false;
+    public $incrementing = true;  
+    protected $primaryKey = 'id';
 
     protected $table = 'user_favorites';
     
     protected $fillable = ['user_id', 'restaurant_id'];
-
-    public $incrementing = false;
-    protected $primaryKey = ['user_id', 'restaurant_id'];
 
     public function user()
     {
