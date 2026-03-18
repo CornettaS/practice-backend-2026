@@ -10,7 +10,6 @@ use App\Models\User;
 
 class AdminService
 {
-    
     public function createRestaurant($data)
     {
         if (isset($data['opening_time'])) {

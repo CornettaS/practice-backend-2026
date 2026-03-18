@@ -45,14 +45,24 @@ class BookingController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+ public function store(Request $request)
     {
         $data = $request->validate([
+            'restaurant_id' => 'required|exists:restaurants,id', 
             'table_id' => 'required|exists:tables,id',
             'booking_date' => 'required|date|after_or_equal:today',
             'booking_time' => 'required|date_format:H:i',
             'guests_count' => 'required|integer|min:1'
         ]);
+
+        $table = Table::with('restaurant')->find($data['table_id']);
+        
+        if ($table->restaurant_id != $data['restaurant_id']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Столик не принадлежит указанному ресторану'
+            ], 400);
+        }
 
         $check = $this->bookingService->checkAvailability(
             $data['table_id'],
@@ -76,15 +86,20 @@ class BookingController extends Controller
             'message' => 'Бронирование успешно создано',
             'data' => [
                 'id' => $booking->id,
-                'restaurant' => $booking->table->restaurant->name,
-                'restaurant_id' => $booking->table->restaurant->id,
-                'address' => $booking->table->restaurant->address,
+                'restaurant' => [
+                    'id' => $booking->table->restaurant->id,
+                    'name' => $booking->table->restaurant->name,
+                    'address' => $booking->table->restaurant->address,
+                ],
+                'table' => [
+                    'id' => $booking->table->id,
+                    'number' => $booking->table->table_number,
+                    'capacity' => $booking->table->capacity
+                ],
                 'date' => $booking->booking_date,
                 'time' => substr($booking->booking_time, 0, 5),
                 'end_time' => date('H:i', strtotime($booking->booking_time) + (2 * 3600)),
                 'guests' => $booking->guests_count,
-                'table_number' => $booking->table->table_number,
-                'table_id' => $booking->table->id,
                 'status' => $booking->status
             ]
         ], 201);
